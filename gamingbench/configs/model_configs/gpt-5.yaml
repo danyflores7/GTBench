@@ -1,0 +1,6 @@
+llm_model_path: gpt-5
+max_tokens: 1024
+timeout: 120
+temperature: 1
+model_type: LLMModel
+nick_name: gpt-5

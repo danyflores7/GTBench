@@ -41,11 +41,30 @@ class PromptAgent(BaseAgent):
         self.logger.info(f'Prompt: {observation_prompt}')
         self.logger.info(f'Response: {responses}')
 
+        # Try to parse the move
         moves = self.parse_with_regex(responses, regex)
+        move = None
         if len(moves) != 0:
             move = self.post_processing(moves, majority_vote=False)
         else:
-            move = ""
+            # Retry once with a short reminder if parsing failed
+            retry_prompt = observation_prompt + "\n\nReminder: Answer ONLY in the required format. Provide exactly one legal action wrapped with <>."
+            retry_msgs = self.construct_init_messages(system_prompt, retry_prompt)
+            retry_responses, retry_query = self.llm_query(
+                retry_msgs, n=1, stop=None, prompt_type='move')
+            query_list.append(retry_query)
+            self.logger.info(f'Retry Response: {retry_responses}')
+            retry_moves = self.parse_with_regex(retry_responses, regex)
+            if len(retry_moves) != 0:
+                move = self.post_processing(retry_moves, majority_vote=False)
+
+        # If still no valid move, fall back to the first legal move to keep the game going
+        if not move:
+            legal_moves = observations.get('legal_moves') or []
+            if isinstance(legal_moves, list) and len(legal_moves) > 0:
+                move = legal_moves[0].strip('<>')  # convert <C1R1> -> C1R1
+            else:
+                move = ""
 
         self.logger.info('-' * 20 + f'{self.agent_name} End' + '-' * 20)
         return move, query_list
