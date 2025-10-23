@@ -11,6 +11,8 @@ class BaseModel(object):
         self.timeout = config.timeout
         self.temperature = config.temperature
         self.nick_name = config.nick_name
+        # Support for additional model kwargs (e.g., reasoning settings)
+        self.model_kwargs = getattr(config, 'model_kwargs', None)
 
     def query(self, messages, n, stop, prompt_type):
         pass

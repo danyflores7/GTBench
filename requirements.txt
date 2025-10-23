@@ -32,6 +32,7 @@ kiwisolver==1.4.5
 langchain==0.1.1
 langchain-community==0.0.20
 langchain-core==0.1.23
+langchain-nvidia-ai-endpoints>=0.3.0
 langsmith==0.0.87
 marshmallow==3.20.2
 matplotlib==3.8.3

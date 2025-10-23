@@ -1,4 +1,5 @@
 import json
+import time
 from collections import defaultdict
 
 
@@ -75,7 +76,20 @@ class GameMatch:
         self.agents = set()
         self.winner_score = 0
         self.loser_score = 0
+        self.start_time = None
+        self.end_time = None
+        self.duration = 0  # in seconds
         pass
+
+    def start_timer(self):
+        """Record the start time of the match"""
+        self.start_time = time.time()
+
+    def end_timer(self):
+        """Record the end time and calculate duration"""
+        self.end_time = time.time()
+        if self.start_time is not None:
+            self.duration = self.end_time - self.start_time
 
     def set_winner(self, winner):
         self.winner = winner
@@ -112,7 +126,10 @@ class GameMatch:
                 "agents_at_fault": self.agents_at_fault,
                 "winner_score": self.winner_score,
                 "loser_score": self.loser_score,
-                "token_size": self.get_token_size()}
+                "token_size": self.get_token_size(),
+                "start_time": self.start_time,
+                "end_time": self.end_time,
+                "duration_seconds": round(self.duration, 2)}
 
     def __json__(self):
         return self.to_dict()

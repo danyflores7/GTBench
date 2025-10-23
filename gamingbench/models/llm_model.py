@@ -15,7 +15,8 @@ class LLMModel(BaseModel):
             max_tokens=self.max_tokens,
             n=n,
             timeout=self.timeout,
-            stop=stop
+            stop=stop,
+            model_kwargs=self.model_kwargs  # Pass model_kwargs from config
         )
         generations = responses['generations']
         completion_tokens = responses['completion_tokens']

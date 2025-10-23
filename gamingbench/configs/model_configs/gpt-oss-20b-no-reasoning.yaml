@@ -1,0 +1,11 @@
+model_type: LLMModel
+nick_name: gpt-oss-20b-no-reasoning
+llm_model_path: openai/gpt-oss-20b
+max_tokens: 4096
+temperature: 1
+timeout: 120
+# Sin razonamiento
+model_kwargs:
+  reasoning: false
+  stream_reasoning: false
+  reasoning_effort: "low"

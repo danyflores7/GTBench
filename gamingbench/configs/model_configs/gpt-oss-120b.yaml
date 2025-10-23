@@ -1,0 +1,6 @@
+model_type: LLMModel
+nick_name: gpt-oss-120b
+llm_model_path: openai/gpt-oss-120b
+max_tokens: 4096
+temperature: 1
+timeout: 120

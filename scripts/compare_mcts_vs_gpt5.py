@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """
-Compara MCTS vs GPT-5 a través de múltiples juegos usando los archivos .jsonl generados por GTBench.
+Compara MCTS vs GPT-5 en múltiples juegos usando archivos .jsonl de GTBench.
 
 Definición de lados:
-- Lado MCTS: participante cuyo nombre de agente empieza con 'MCTSAgent_'.
-- Lado GPT-5: cualquier participante cuyo nombre termine en '_gpt-5' y NO sea MCTS.
+- MCTS: participante cuyo nombre de agente empieza con 'MCTSAgent_'.
+- GPT-5: cualquier participante cuyo nombre termine en '_gpt-5' y NO sea MCTS.
 
-Para cada partida Normal se cuentan victorias/derrotas/empates por juego y totales.
-Las partidas Abnormal se reportan como métricas informativas (no cuentan en W/L/D).
+Se cuentan W/L/D por juego y totales solo en partidas con estado "Normal".
+Las partidas con estado "Abnormal" se reportan como informativas
+(no cuentan en W/L/D).
 """
 
 import argparse
@@ -81,7 +82,8 @@ def analyze(items: List[dict], llm_tag: str = "gpt-5") -> Dict:
             # identificar lados
             mcts_side = [p for p in participants if p.startswith("MCTSAgent_")]
             gpt_side = [
-                p for p in participants
+                p
+                for p in participants
                 if p.endswith(f"_{llm_tag}") and not p.startswith("MCTSAgent_")
             ]
 
@@ -121,8 +123,13 @@ def analyze(items: List[dict], llm_tag: str = "gpt-5") -> Dict:
             "gpt5_winrate": stats["gpt5_wins"] / n,
             "draw_rate": stats["draws"] / n,
             "better": (
-                "MCTS" if stats["mcts_wins"] > stats["gpt5_wins"]
-                else ("GPT-5" if stats["gpt5_wins"] > stats["mcts_wins"] else "Tie")
+                "MCTS"
+                if stats["mcts_wins"] > stats["gpt5_wins"]
+                else (
+                    "GPT-5"
+                    if stats["gpt5_wins"] > stats["mcts_wins"]
+                    else "Tie"
+                )
             ),
         }
 
@@ -133,8 +140,13 @@ def analyze(items: List[dict], llm_tag: str = "gpt-5") -> Dict:
         "gpt5_winrate": totals["gpt5_wins"] / n_all,
         "draw_rate": totals["draws"] / n_all,
         "better": (
-            "MCTS" if totals["mcts_wins"] > totals["gpt5_wins"]
-            else ("GPT-5" if totals["gpt5_wins"] > totals["mcts_wins"] else "Tie")
+            "MCTS"
+            if totals["mcts_wins"] > totals["gpt5_wins"]
+            else (
+                "GPT-5"
+                if totals["gpt5_wins"] > totals["mcts_wins"]
+                else "Tie"
+            )
         ),
     }
 
@@ -143,19 +155,31 @@ def analyze(items: List[dict], llm_tag: str = "gpt-5") -> Dict:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Comparar MCTS vs GPT-5 en resultados GTBench (.jsonl)"
+        description=(
+            "Comparar MCTS vs GPT-5 en resultados GTBench (.jsonl)"
+        )
     )
     parser.add_argument(
         "paths",
         nargs="+",
-        help="Rutas a .jsonl o carpetas con .jsonl (ej. experiments/test-gpt5)",
+        help=(
+            "Rutas a .jsonl o carpetas con .jsonl "
+            "(ej. experiments/test-gpt5)"
+        ),
     )
     parser.add_argument(
         "--llm-tag",
         default="gpt-5",
-        help="Sufijo de modelo para identificar el lado LLM (por defecto: gpt-5)",
+        help=(
+            "Sufijo de modelo para identificar el lado LLM "
+            "(por defecto: gpt-5)"
+        ),
     )
-    parser.add_argument("--save", type=str, help="Ruta para guardar el resumen en JSON")
+    parser.add_argument(
+        "--save",
+        type=str,
+        help="Ruta para guardar el resumen en JSON",
+    )
     args = parser.parse_args()
 
     files = collect_files(args.paths)

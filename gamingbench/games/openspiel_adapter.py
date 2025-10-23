@@ -36,6 +36,7 @@ class OpenSpielGame:
     def play(self, agent_list, model_list, tracker):
         self.status = "Normal"
         _match = GameMatch()
+        _match.start_timer()  # Start timing the match
 
         num_step = 0
         while not self.env.is_terminal():
@@ -200,6 +201,7 @@ class OpenSpielGame:
             winner_name = ""
 
         _match.set_winner(winner_name)
+        _match.end_timer()  # End timing the match
         tracker.add_match(_match)
         if _match.winner != "":
             self.logger.info(f"The winner is {_match.winner}")

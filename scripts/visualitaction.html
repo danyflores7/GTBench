@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>GTBench — Visualización por Modo de Prompt</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<style>
+  :root{
+    --bg:#0b0d10;
+    --panel:#151a22;
+    --muted:#9ba4b5;
+    --ink:#e8edf3;
+    --accent:#6ea8fe;  /* azul */
+    --accent2:#8ce99a; /* verde */
+    --accent3:#ffd43b; /* amarillo */
+    --danger:#ff6b6b;  /* rojo */
+    --ok:#51cf66;      /* verde fuerte */
+    --warn:#fab005;    /* ámbar */
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Inter,Ubuntu,"Helvetica Neue",Arial;
+  }
+  header{
+    padding:20px 20px 8px; border-bottom:1px solid #1f2631;
+  }
+  h1{margin:0; font-size:20px; font-weight:700}
+  .sub{color:var(--muted); margin-top:6px}
+  .container{padding:18px; max-width:1200px; margin:auto}
+  .grid{
+    display:grid; gap:16px;
+    grid-template-columns: repeat(12, 1fr);
+  }
+  .card{
+    background:var(--panel); border:1px solid #222a36; border-radius:14px; padding:14px;
+  }
+  .span-4{grid-column: span 4}
+  .span-6{grid-column: span 6}
+  .span-12{grid-column: span 12}
+  @media (max-width: 1000px){
+    .span-4,.span-6{grid-column: span 12}
+  }
+  .row{
+    display:flex; gap:12px; flex-wrap:wrap; align-items:center
+  }
+  .tag{
+    padding:4px 8px; border-radius:999px; font-size:12px; border:1px solid #2a3342; color:var(--muted)
+  }
+  .kpi{
+    display:flex; flex-direction:column; gap:2px; padding:10px 12px; border:1px dashed #2a3342; border-radius:12px; min-width:140px
+  }
+  .kpi .v{font-size:18px; font-weight:700}
+  .kpi .l{color:var(--muted); font-size:12px}
+  .mode-title{font-weight:700; font-size:15px}
+  .mode-simple{color:var(--accent)}
+  .mode-cot{color:var(--accent2)}
+  .mode-tot{color:var(--accent3)}
+  .toolbar{
+    display:flex; gap:8px; flex-wrap:wrap; align-items:center; justify-content:space-between; margin-bottom:8px
+  }
+  button, .btn{
+    background:#1b2330; color:#dce3ee; border:1px solid #2a3342; border-radius:10px; padding:8px 12px; cursor:pointer;
+  }
+  button:hover{border-color:#3b465a}
+  textarea{
+    width:100%; min-height:140px; background:#0e131a; color:#e8edf3; border:1px solid #263043; border-radius:10px; padding:10px; font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,"Roboto Mono",monospace; font-size:12px
+  }
+  .heatmap{
+    width:100%; border-collapse:separate; border-spacing:0; overflow:hidden; border-radius:12px; border:1px solid #2a3342
+  }
+  .heatmap th,.heatmap td{padding:10px 12px; text-align:center; border-bottom:1px solid #222a36; border-right:1px solid #222a36}
+  .heatmap th:last-child,.heatmap td:last-child{border-right:none}
+  .heatmap tr:last-child td{border-bottom:none}
+  .cell-gpt{background:rgba(108, 192, 255, 0.12)}
+  .cell-mcts{background:rgba(120, 255, 155, 0.12)}
+  .cell-tie{background:rgba(255, 210, 70, 0.12)}
+  .legend{display:flex; gap:8px; align-items:center; color:var(--muted); font-size:12px}
+  .dot{width:10px; height:10px; border-radius:50%}
+  .dot.gpt{background:var(--accent)}
+  .dot.mcts{background:var(--accent2)}
+  .dot.tie{background:var(--accent3)}
+  table.detail{
+    width:100%; border-collapse:collapse; overflow:hidden; border-radius:12px; border:1px solid #2a3342
+  }
+  table.detail th, table.detail td{
+    padding:10px 12px; border-bottom:1px solid #222a36; text-align:left
+  }
+  table.detail th{color:#cdd6e3; font-weight:600; font-size:12px; text-transform:uppercase; letter-spacing:.02em}
+  table.detail tr:last-child td{border-bottom:none}
+  .pill{
+    padding:3px 8px; border-radius:999px; font-size:12px; display:inline-block
+  }
+  .ok{background:rgba(81,207,102,.15); color:#9cf2a9; border:1px solid rgba(81,207,102,.35)}
+  .warn{background:rgba(250,176,5,.12); color:#ffd37a; border:1px solid rgba(250,176,5,.35)}
+  .bad{background:rgba(255,107,107,.12); color:#ffc2c2; border:1px solid rgba(255,107,107,.35)}
+  .muted{color:var(--muted)}
+  .footer{color:var(--muted); font-size:12px; text-align:center; padding:18px}
+</style>
+</head>
+<body>
+  <header>
+    <h1>GTBench — Comparativa por Modo de Prompt</h1>
+    <div class="sub">Dataset: Prompt Simple vs “Change of Thought” (CoT) vs “Tree of Thought” (ToT). Visualizaciones para entender rápidamente el desempeño por juego.</div>
+  </header>
+
+  <div class="container">
+    <!-- Panel de carga/edición -->
+    <div class="card span-12">
+      <div class="toolbar">
+        <div class="row">
+          <span class="tag">Opcional: pega aquí nuevos JSONs para actualizar</span>
+        </div>
+        <div class="row">
+          <button id="btnLoad">Actualizar visualizaciones</button>
+          <button id="btnReset">Restaurar datos de ejemplo</button>
+        </div>
+      </div>
+      <div class="grid">
+        <div class="span-4">
+          <div class="mode-title mode-simple">JSON — Prompt Simple</div>
+          <textarea id="jsonSimple"></textarea>
+        </div>
+        <div class="span-4">
+          <div class="mode-title mode-cot">JSON — Change of Thought (CoT)</div>
+          <textarea id="jsonCoT"></textarea>
+        </div>
+        <div class="span-4">
+          <div class="mode-title mode-tot">JSON — Tree of Thought (ToT)</div>
+          <textarea id="jsonToT"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- KPIs por modo -->
+    <div class="grid" id="kpiGrid">
+      <!-- Se llena dinámicamente -->
+    </div>
+
+    <!-- Gráficas principales -->
+    <div class="grid">
+      <div class="card span-6">
+        <div class="toolbar">
+          <div class="row">
+            <strong>Winrate GPT por juego</strong>
+          </div>
+          <div class="legend">
+            <span class="dot gpt"></span> GPT Winrate (por juego y modo)
+          </div>
+        </div>
+        <canvas id="chartGPT"></canvas>
+      </div>
+      <div class="card span-6">
+        <div class="toolbar">
+          <div class="row">
+            <strong>Winrate MCTS por juego</strong>
+          </div>
+          <div class="legend">
+            <span class="dot mcts"></span> MCTS Winrate (por juego y modo)
+          </div>
+        </div>
+        <canvas id="chartMCTS"></canvas>
+      </div>
+
+      <div class="card span-12">
+        <div class="toolbar">
+          <div class="row">
+            <strong>Resultados totales por modo</strong>
+          </div>
+          <div class="legend">
+            <span class="dot gpt"></span> GPT Wins
+            <span class="dot mcts"></span> MCTS Wins
+            <span class="dot tie"></span> Empates
+          </div>
+        </div>
+        <canvas id="chartStacked"></canvas>
+      </div>
+    </div>
+
+    <!-- Heatmap Who's Better -->
+    <div class="grid">
+      <div class="card span-12">
+        <div class="toolbar">
+          <div class="row"><strong>Heatmap — “Mejor” por juego y modo</strong></div>
+          <div class="legend">
+            <span class="dot gpt"></span> GPT-OSS-120B
+            <span class="dot mcts"></span> MCTS
+            <span class="dot tie"></span> Empate
+          </div>
+        </div>
+        <div id="heatmapWrap"></div>
+      </div>
+    </div>
+
+    <!-- Tabla detalle -->
+    <div class="grid">
+      <div class="card span-12">
+        <div class="toolbar">
+          <div class="row"><strong>Detalle por juego (todos los modos)</strong></div>
+          <div class="row muted">Incluye normal/abnormal, victorias y tasas.</div>
+        </div>
+        <div id="tableWrap"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">Hecho para análisis rápido de resultados GTBench — Puedes pegar nuevos JSONs arriba y presionar “Actualizar visualizaciones”.</div>
+
+<script>
+/** ---------- Datos de ejemplo (los tuyos) ---------- **/
+const EXAMPLE_SIMPLE = {
+  "per_game": {
+    "FirstSealedAuction": {"normal":6,"abnormal":0,"mcts_wins":2,"gpt_wins":4,"draws":0,"unclassified":0,"mcts_winrate":0.3333333333333333,"gpt_winrate":0.6666666666666666,"draw_rate":0.0,"better":"GPT-OSS-120B"},
+    "KuhnPoker": {"normal":5,"abnormal":1,"mcts_wins":1,"gpt_wins":4,"draws":0,"unclassified":0,"mcts_winrate":0.2,"gpt_winrate":0.8,"draw_rate":0.0,"better":"GPT-OSS-120B"},
+    "Negotiation": {"normal":5,"abnormal":1,"mcts_wins":0,"gpt_wins":5,"draws":0,"unclassified":0,"mcts_winrate":0.0,"gpt_winrate":1.0,"draw_rate":0.0,"better":"GPT-OSS-120B"},
+    "Pig": {"normal":6,"abnormal":0,"mcts_wins":3,"gpt_wins":3,"draws":0,"unclassified":0,"mcts_winrate":0.5,"gpt_winrate":0.5,"draw_rate":0.0,"better":"Tie"}
+  },
+  "overall": {"normal":22,"abnormal":2,"mcts_wins":6,"gpt_wins":16,"draws":0,"unclassified":0,"mcts_winrate":0.2727272727272727,"gpt_winrate":0.7272727272727273,"draw_rate":0.0,"better":"GPT-OSS-120B"}
+};
+
+const EXAMPLE_COT = {
+  "per_game": {
+    "FirstSealedAuction": {"normal":6,"abnormal":0,"mcts_wins":2,"gpt_wins":4,"draws":0,"unclassified":0,"mcts_winrate":0.3333333333333333,"gpt_winrate":0.6666666666666666,"draw_rate":0.0,"better":"GPT-OSS-120B"},
+    "KuhnPoker": {"normal":4,"abnormal":2,"mcts_wins":1,"gpt_wins":3,"draws":0,"unclassified":0,"mcts_winrate":0.25,"gpt_winrate":0.75,"draw_rate":0.0,"better":"GPT-OSS-120B"},
+    "Negotiation": {"normal":5,"abnormal":1,"mcts_wins":2,"gpt_wins":3,"draws":0,"unclassified":0,"mcts_winrate":0.4,"gpt_winrate":0.6,"draw_rate":0.0,"better":"GPT-OSS-120B"},
+    "Pig": {"normal":6,"abnormal":0,"mcts_wins":2,"gpt_wins":4,"draws":0,"unclassified":0,"mcts_winrate":0.3333333333333333,"gpt_winrate":0.6666666666666666,"draw_rate":0.0,"better":"GPT-OSS-120B"}
+  },
+  "overall": {"normal":21,"abnormal":3,"mcts_wins":7,"gpt_wins":14,"draws":0,"unclassified":0,"mcts_winrate":0.3333333333333333,"gpt_winrate":0.6666666666666666,"draw_rate":0.0,"better":"GPT-OSS-120B"}
+};
+
+const EXAMPLE_TOT = {
+  "per_game": {
+    "FirstSealedAuction": {"normal":6,"abnormal":0,"mcts_wins":2,"gpt_wins":4,"draws":0,"unclassified":0,"mcts_winrate":0.3333333333333333,"gpt_winrate":0.6666666666666666,"draw_rate":0.0,"better":"GPT-OSS-120B"},
+    "KuhnPoker": {"normal":2,"abnormal":4,"mcts_wins":1,"gpt_wins":1,"draws":0,"unclassified":0,"mcts_winrate":0.5,"gpt_winrate":0.5,"draw_rate":0.0,"better":"Tie"},
+    "Negotiation": {"normal":5,"abnormal":1,"mcts_wins":3,"gpt_wins":2,"draws":0,"unclassified":0,"mcts_winrate":0.6,"gpt_winrate":0.4,"draw_rate":0.0,"better":"MCTS"},
+    "Pig": {"normal":6,"abnormal":0,"mcts_wins":1,"gpt_wins":5,"draws":0,"unclassified":0,"mcts_winrate":0.16666666666666666,"gpt_winrate":0.8333333333333334,"draw_rate":0.0,"better":"GPT-OSS-120B"}
+  },
+  "overall": {"normal":19,"abnormal":5,"mcts_wins":7,"gpt_wins":12,"draws":0,"unclassified":0,"mcts_winrate":0.3684210526315789,"gpt_winrate":0.631578947368421,"draw_rate":0.0,"better":"GPT-OSS-120B"}
+};
+
+/** ---------- Utilidades ---------- **/
+const clampPct = v => Math.max(0, Math.min(1, v));
+const pct = v => (clampPct(v)*100).toFixed(1) + '%';
+const MODE_META = [
+  {key:'simple', label:'Prompt Simple', color:'#6ea8fe'},
+  {key:'cot',    label:'Change of Thought', color:'#8ce99a'},
+  {key:'tot',    label:'Tree of Thought', color:'#ffd43b'}
+];
+
+function parseJSONSafe(txt, fallback){
+  try{ return JSON.parse(txt) }catch(e){ return fallback }
+}
+
+function unionGames(objs){
+  const set = new Set();
+  objs.forEach(o=>{
+    Object.keys(o.per_game||{}).forEach(g=>set.add(g));
+  });
+  return Array.from(set);
+}
+
+function buildDatasetsByGame(games, dataByMode, field){
+  // field: 'gpt_winrate' | 'mcts_winrate'
+  return MODE_META.map(m=>{
+    const d = dataByMode[m.key];
+    return {
+      label: m.label,
+      data: games.map(g=> (d.per_game[g]?.[field] ?? 0) * 100),
+      borderColor: m.color,
+      backgroundColor: m.color + '55',
+      borderWidth: 1.5,
+      tension: .25
+    };
+  });
+}
+
+function stackedTotals(dataByMode){
+  return MODE_META.map(m=>{
+    const o = dataByMode[m.key].overall || {};
+    return { mode: m.label, gpt:o.gpt_wins||0, mcts:o.mcts_wins||0, draws:o.draws||0 };
+  });
+}
+
+function whoCellClass(v){
+  if(v==='GPT-OSS-120B') return 'cell-gpt';
+  if(v==='MCTS') return 'cell-mcts';
+  return 'cell-tie';
+}
+
+function pillForRate(r){
+  if(r>=0.67) return 'pill ok';
+  if(r>=0.4) return 'pill warn';
+  return 'pill bad';
+}
+
+/** ---------- Estado/Charts ---------- **/
+let charts = {gpt:null, mcts:null, stacked:null};
+
+function renderAll(simple, cot, tot){
+  // Guardar JSON en textareas
+  document.getElementById('jsonSimple').value = JSON.stringify(simple, null, 2);
+  document.getElementById('jsonCoT').value    = JSON.stringify(cot, null, 2);
+  document.getElementById('jsonToT').value    = JSON.stringify(tot, null, 2);
+
+  const dataByMode = { simple, cot, tot };
+  const games = unionGames([simple, cot, tot]);
+
+  // KPIs
+  renderKPIs(dataByMode);
+
+  // Charts
+  renderCharts(games, dataByMode);
+
+  // Heatmap
+  renderHeatmap(games, dataByMode);
+
+  // Table
+  renderDetailTable(games, dataByMode);
+}
+
+function renderKPIs(dataByMode){
+  const wrap = document.getElementById('kpiGrid');
+  wrap.innerHTML = '';
+  MODE_META.forEach(m=>{
+    const o = dataByMode[m.key].overall || {};
+    const card = document.createElement('div');
+    card.className = 'card span-4';
+    card.innerHTML = `
+      <div class="mode-title" style="color:${m.color}">${m.label}</div>
+      <div class="row" style="margin-top:8px">
+        <div class="kpi">
+          <div class="v">${pct(o.gpt_winrate ?? 0)}</div>
+          <div class="l">GPT Winrate</div>
+        </div>
+        <div class="kpi">
+          <div class="v">${pct(o.mcts_winrate ?? 0)}</div>
+          <div class="l">MCTS Winrate</div>
+        </div>
+        <div class="kpi">
+          <div class="v">${o.gpt_wins ?? 0} / ${o.mcts_wins ?? 0} / ${o.draws ?? 0}</div>
+          <div class="l">GPT / MCTS / Empates</div>
+        </div>
+        <div class="kpi">
+          <div class="v">${o.normal ?? 0}</div>
+          <div class="l">Partidas normales</div>
+        </div>
+        <div class="kpi">
+          <div class="v">${o.abnormal ?? 0}</div>
+          <div class="l">Partidas anómalas</div>
+        </div>
+      </div>
+    `;
+    wrap.appendChild(card);
+  });
+}
+
+function renderCharts(games, dataByMode){
+  // Destroy previous
+  ['gpt','mcts','stacked'].forEach(k=>{
+    if(charts[k]){ charts[k].destroy(); charts[k]=null; }
+  });
+
+  // GPT winrate
+  charts.gpt = new Chart(document.getElementById('chartGPT'), {
+    type:'bar',
+    data:{
+      labels: games,
+      datasets: buildDatasetsByGame(games, dataByMode, 'gpt_winrate')
+    },
+    options:{
+      responsive:true,
+      scales:{
+        y:{ beginAtZero:true, max:100, ticks:{ callback:(v)=> v+'%' } },
+        x:{ grid:{ display:false } }
+      },
+      plugins:{
+        legend:{ position:'bottom' },
+        tooltip:{
+          callbacks:{
+            label: ctx => `${ctx.dataset.label}: ${ctx.formattedValue}%`
+          }
+        }
+      }
+    }
+  });
+
+  // MCTS winrate
+  charts.mcts = new Chart(document.getElementById('chartMCTS'), {
+    type:'bar',
+    data:{
+      labels: games,
+      datasets: buildDatasetsByGame(games, dataByMode, 'mcts_winrate')
+    },
+    options:{
+      responsive:true,
+      scales:{
+        y:{ beginAtZero:true, max:100, ticks:{ callback:(v)=> v+'%' } },
+        x:{ grid:{ display:false } }
+      },
+      plugins:{
+        legend:{ position:'bottom' },
+        tooltip:{
+          callbacks:{
+            label: ctx => `${ctx.dataset.label}: ${ctx.formattedValue}%`
+          }
+        }
+      }
+    }
+  });
+
+  // Stacked totals per mode
+  const totals = stackedTotals(dataByMode);
+  charts.stacked = new Chart(document.getElementById('chartStacked'), {
+    type:'bar',
+    data:{
+      labels: totals.map(t=>t.mode),
+      datasets:[
+        {label:'GPT Wins', data: totals.map(t=>t.gpt), backgroundColor:'#6ea8feaa'},
+        {label:'MCTS Wins', data: totals.map(t=>t.mcts), backgroundColor:'#8ce99aaa'},
+        {label:'Empates', data: totals.map(t=>t.draws), backgroundColor:'#ffd43baa'}
+      ]
+    },
+    options:{
+      responsive:true,
+      scales:{
+        x:{ stacked:true, grid:{ display:false }},
+        y:{ stacked:true, beginAtZero:true }
+      },
+      plugins:{ legend:{ position:'bottom' } }
+    }
+  });
+}
+
+function renderHeatmap(games, dataByMode){
+  const wrap = document.getElementById('heatmapWrap');
+  const head = `
+    <tr>
+      <th>Juego</th>
+      ${MODE_META.map(m=>`<th>${m.label}</th>`).join('')}
+    </tr>`;
+  const rows = games.map(g=>{
+    const cells = MODE_META.map(m=>{
+      const v = dataByMode[m.key].per_game[g]?.better ?? 'Tie';
+      return `<td class="${whoCellClass(v)}">${v}</td>`;
+    }).join('');
+    return `<tr><td style="text-align:left">${g}</td>${cells}</tr>`;
+  }).join('');
+
+  wrap.innerHTML = `
+    <table class="heatmap">
+      <thead>${head}</thead>
+      <tbody>${rows}</tbody>
+    </table>
+  `;
+}
+
+function renderDetailTable(games, dataByMode){
+  const wrap = document.getElementById('tableWrap');
+  const head = `
+    <tr>
+      <th>Juego</th>
+      <th>Modo</th>
+      <th>Normal</th>
+      <th>Anómalo</th>
+      <th>GPT Wins</th>
+      <th>MCTS Wins</th>
+      <th>Empates</th>
+      <th>GPT Winrate</th>
+      <th>MCTS Winrate</th>
+      <th>Mejor</th>
+    </tr>`;
+  const rows = [];
+  games.forEach(g=>{
+    MODE_META.forEach(m=>{
+      const pg = dataByMode[m.key].per_game[g] || {};
+      rows.push(`
+        <tr>
+          <td>${g}</td>
+          <td style="color:${m.color}">${m.label}</td>
+          <td>${pg.normal ?? 0}</td>
+          <td>${pg.abnormal ?? 0}</td>
+          <td>${pg.gpt_wins ?? 0}</td>
+          <td>${pg.mcts_wins ?? 0}</td>
+          <td>${pg.draws ?? 0}</td>
+          <td><span class="${pillForRate(pg.gpt_winrate ?? 0)}">${pct(pg.gpt_winrate ?? 0)}</span></td>
+          <td><span class="${pillForRate(pg.mcts_winrate ?? 0)}">${pct(pg.mcts_winrate ?? 0)}</span></td>
+          <td>${pg.better ?? '—'}</td>
+        </tr>
+      `);
+    });
+  });
+
+  wrap.innerHTML = `
+    <table class="detail">
+      <thead>${head}</thead>
+      <tbody>${rows.join('')}</tbody>
+    </table>
+  `;
+}
+
+/** ---------- Interacción ---------- **/
+document.getElementById('btnLoad').addEventListener('click', ()=>{
+  const s = parseJSONSafe(document.getElementById('jsonSimple').value, EXAMPLE_SIMPLE);
+  const c = parseJSONSafe(document.getElementById('jsonCoT').value, EXAMPLE_COT);
+  const t = parseJSONSafe(document.getElementById('jsonToT').value, EXAMPLE_TOT);
+  renderAll(s,c,t);
+});
+
+document.getElementById('btnReset').addEventListener('click', ()=>{
+  renderAll(EXAMPLE_SIMPLE, EXAMPLE_COT, EXAMPLE_TOT);
+});
+
+/** ---------- Inicialización ---------- **/
+renderAll(EXAMPLE_SIMPLE, EXAMPLE_COT, EXAMPLE_TOT);
+</script>
+</body>
+</html>

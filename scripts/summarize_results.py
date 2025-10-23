@@ -44,6 +44,10 @@ def summarize(items, per_match=False):
     tokens_total = 0
     winners = Counter()
     agents_fault = Counter()
+    
+    # Time tracking
+    total_duration = 0
+    match_durations = []
 
     # win rates aggregated across histories
     win_rates_acc = defaultdict(list)
@@ -64,6 +68,12 @@ def summarize(items, per_match=False):
             win_rates_acc[agent].append(rate)
 
         for match_index, m in enumerate(hist.get("matches", [])):
+            # Track duration if available
+            duration = m.get("duration_seconds", 0)
+            if duration > 0:
+                total_duration += duration
+                match_durations.append(duration)
+            
             # participants as agent_model from steps
             participants = []
             for s in m.get("steps", []):
@@ -99,17 +109,26 @@ def summarize(items, per_match=False):
                     move = s.get("move", "")
                     move = move.strip("<>") if isinstance(move, str) else move
                     seq.append(f"{s.get('agent','')}:{move}")
-                match_details.append({
+                match_detail = {
                     "game": game,
                     "status": m.get("status"),
                     "participants": participants,
                     "winner": m.get("winner", ""),
                     "sequence": seq,
-                })
+                }
+                # Add duration if available
+                if duration > 0:
+                    match_detail["duration_seconds"] = duration
+                match_details.append(match_detail)
 
     # average win rates
     avg_win_rates = {k: (sum(v)/len(v) if v else 0.0) for k, v in win_rates_acc.items()}
     avg_tokens = tokens_total / total_runs if total_runs else 0
+    
+    # Calculate time statistics
+    avg_duration = total_duration / len(match_durations) if match_durations else 0
+    min_duration = min(match_durations) if match_durations else 0
+    max_duration = max(match_durations) if match_durations else 0
 
     result = {
         "total_histories": total_runs,
@@ -123,6 +142,13 @@ def summarize(items, per_match=False):
         "agent_model_wld": wld,
         "tokens_total": tokens_total,
         "avg_tokens_per_history": avg_tokens,
+        "time_statistics": {
+            "total_duration_seconds": round(total_duration, 2),
+            "avg_duration_per_match_seconds": round(avg_duration, 2),
+            "min_duration_seconds": round(min_duration, 2),
+            "max_duration_seconds": round(max_duration, 2),
+            "total_matches_with_timing": len(match_durations)
+        }
     }
 
     if per_match:
