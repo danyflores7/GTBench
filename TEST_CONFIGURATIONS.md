@@ -37,6 +37,26 @@ NVIDIA_API_KEY=tu_api_key PYTHONPATH=. ./.venv/bin/python gamingbench/main.py \
   --exchange-first-player
 ```
 
+PYTHONPATH=. ./.venv/bin/python gamingbench/main.py \
+  --game-names first_sealed_auction kuhn_poker liars_dice negotiation pig \
+  --agent-configs gamingbench/configs/agent_configs/sccot_agent.yaml \
+                 gamingbench/configs/agent_configs/mcts_agent.yaml \
+  --model-configs gamingbench/configs/model_configs/gpt-oss-20b-no-reasoning.yaml \
+                  gamingbench/configs/model_configs/gpt-oss-20b-no-reasoning.yaml \
+  --num-matches 10 \
+  --exp-root ./experiments/test-no-reasoning-sccot \
+  --exchange-first-player
+
+PYTHONPATH=. ./.venv/bin/python gamingbench/main.py \
+  --game-names prisoners_dilemma \
+  --agent-configs gamingbench/configs/agent_configs/prompt_agent.yaml \
+                 gamingbench/configs/agent_configs/titfortat_agent.yaml \
+  --model-configs gamingbench/configs/model_configs/gpt-oss-20b-no-reasoning.yaml \
+                  gamingbench/configs/model_configs/gpt-oss-20b-no-reasoning.yaml \
+  --num-matches 10 \
+  --exp-root ./experiments/test-no-reasoning-simple \
+  --exchange-first-player
+
 #### 2️⃣ GPT-OSS-20B sin razonamiento + CoT vs MCTS
 ```bash
 NVIDIA_API_KEY=tu_api_key PYTHONPATH=. ./.venv/bin/python gamingbench/main.py \
@@ -50,6 +70,16 @@ NVIDIA_API_KEY=tu_api_key PYTHONPATH=. ./.venv/bin/python gamingbench/main.py \
   --exchange-first-player
 ```
 
+PYTHONPATH=. ./.venv/bin/python gamingbench/main.py \
+  --game-names prisoners_dilemma \
+  --agent-configs gamingbench/configs/agent_configs/cot_agent.yaml \
+                 gamingbench/configs/agent_configs/titfortat_agent.yaml \
+  --model-configs gamingbench/configs/model_configs/gpt-oss-20b-no-reasoning.yaml \
+                  gamingbench/configs/model_configs/gpt-oss-20b-no-reasoning.yaml \
+  --num-matches 10 \
+  --exp-root ./experiments/test-no-reasoning-cot \
+  --exchange-first-player
+
 #### 3️⃣ GPT-OSS-20B sin razonamiento + ToT vs MCTS
 ```bash
 NVIDIA_API_KEY=tu_api_key PYTHONPATH=. ./.venv/bin/python gamingbench/main.py \
@@ -62,6 +92,16 @@ NVIDIA_API_KEY=tu_api_key PYTHONPATH=. ./.venv/bin/python gamingbench/main.py \
   --exp-root ./experiments/test-no-reasoning-tot \
   --exchange-first-player
 ```
+
+PYTHONPATH=. ./.venv/bin/python gamingbench/main.py \
+  --game-names prisoners_dilemma \
+  --agent-configs gamingbench/configs/agent_configs/titfortat_agent.yaml \
+                 gamingbench/configs/agent_configs/mcts_agent.yaml \
+  --model-configs gamingbench/configs/model_configs/gpt-oss-20b-no-reasoning.yaml \
+                  gamingbench/configs/model_configs/gpt-oss-20b-no-reasoning.yaml \
+  --num-matches 10 \
+  --exp-root ./experiments/test-no-reasoning-tot \
+  --exchange-first-player
 
 ---
 
@@ -79,6 +119,15 @@ NVIDIA_API_KEY=tu_api_key PYTHONPATH=. ./.venv/bin/python gamingbench/main.py \
   --exp-root ./experiments/test-reasoning-low-simple \
   --exchange-first-player
 ```
+PYTHONPATH=. ./.venv/bin/python gamingbench/main.py \
+  --game-names first_sealed_auction kuhn_poker liars_dice negotiation pig \
+  --agent-configs gamingbench/configs/agent_configs/sccot_agent.yaml \
+                 gamingbench/configs/agent_configs/mcts_agent.yaml \
+  --model-configs gamingbench/configs/model_configs/gpt-oss-20b-reasoning-low.yaml \
+                  gamingbench/configs/model_configs/gpt-oss-20b-reasoning-low.yaml \
+  --num-matches 10 \
+  --exp-root ./experiments/test-reasoning-low-sccot \
+  --exchange-first-player
 
 #### 5️⃣ GPT-OSS-20B razonamiento bajo + CoT vs MCTS
 ```bash
@@ -122,6 +171,16 @@ NVIDIA_API_KEY=tu_api_key PYTHONPATH=. ./.venv/bin/python gamingbench/main.py \
   --exp-root ./experiments/test-reasoning-medium-simple \
   --exchange-first-player
 ```
+
+PYTHONPATH=. ./.venv/bin/python gamingbench/main.py \
+  --game-names first_sealed_auction kuhn_poker liars_dice negotiation pig \
+  --agent-configs gamingbench/configs/agent_configs/sccot_agent.yaml \
+                 gamingbench/configs/agent_configs/mcts_agent.yaml \
+  --model-configs gamingbench/configs/model_configs/gpt-oss-20b-reasoning-medium.yaml \
+                  gamingbench/configs/model_configs/gpt-oss-20b-reasoning-medium.yaml \
+  --num-matches 10 \
+  --exp-root ./experiments/test-reasoning-medium-sccot \
+  --exchange-first-player
 
 #### 8️⃣ GPT-OSS-20B razonamiento medio + CoT vs MCTS
 ```bash
@@ -306,3 +365,39 @@ chmod +x run_all_tests.sh
 - Ajusta `--num-matches` según cuántas partidas quieras por prueba
 - Puedes cambiar `tictactoe` por otros juegos: `kuhn_poker`, `negotiation`, `pig`, etc.
 - Cada prueba guarda resultados en un directorio separado para facilitar el análisis
+
+
+
+
+
+
+
+python3 scripts/compare_configurations.py \
+  experiments/test-no-reasoning-simple \
+  experiments/test-no-reasoning-cot \
+  experiments/test-no-reasoning-sccot \
+  experiments/test-no-reasoning-tot \
+  experiments/test-reasoning-low-simple \
+  experiments/test-reasoning-low-cot \
+  experiments/test-reasoning-low-sccot \
+  experiments/test-reasoning-low-tot \
+  experiments/test-reasoning-medium-simple \
+  experiments/test-reasoning-medium-cot \
+  experiments/test-reasoning-medium-sccot \
+  experiments/test-reasoning-medium-tot \
+  experiments/test-reasoning-high-simple \
+  experiments/test-reasoning-high-cot \
+  experiments/test-reasoning-high-sccot \
+  experiments/test-reasoning-high-tot \
+  --output experiments/comparison_report.html
+
+
+  PYTHONPATH=. ./.venv/bin/python gamingbench/main.py \
+  --game-names prisoners_dilemma \
+  --agent-configs gamingbench/configs/agent_configs/sccot_agent.yaml \
+                 gamingbench/configs/agent_configs/titfortat_agent.yaml \
+  --model-configs gamingbench/configs/model_configs/gpt-oss-20b-reasoning-medium.yaml \
+                  gamingbench/configs/model_configs/gpt-oss-20b-reasoning-medium.yaml \
+  --num-matches 10 \
+  --exp-root ./experiments/test-reasoning-medium-sccot \
+  --exchange-first-player
